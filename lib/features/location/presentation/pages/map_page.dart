@@ -7,14 +7,45 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:get/get.dart';
 import 'package:latlong2/latlong.dart';
 
-class MapView extends StatelessWidget {
+import '../../data/models/rute_model.dart';
+
+class MapViewPage extends StatefulWidget {
+  MapViewPage({super.key, required this.rute});
+
+  RuteModel rute;
+
+  @override
+  State<MapViewPage> createState() => _MapViewPageState();
+}
+
+class _MapViewPageState extends State<MapViewPage> {
+  final mapController = Get.find<MyMapController>();
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    print("id: "+ widget.rute.id.toString());
+    Future.delayed(Duration(seconds: 2)).then(
+      (value) => mapController.updateMap(widget.rute.id.toString()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final mapController = Get.find<MyMapController>();
-
+    // mapController.loadLocalData();
     return Scaffold(
       appBar: AppBar(
         title: Text('Map View'),
+        leading: IconButton(
+            onPressed: () {
+              mapController.isLocationupdate.value = false;
+              mapController.isSearchLoc.value = false;
+              mapController.circleAreas.clear();
+              mapController.locationMark.clear();
+
+              Get.back();
+            },
+            icon: Icon(Icons.arrow_back)),
         actions: [
           Obx(() {
             if (mapController.isInside.isTrue) {
@@ -91,157 +122,166 @@ class MapView extends StatelessWidget {
             }
           }),
           Expanded(
-              child: Obx(() => FlutterMap(
-                    mapController: mapController.map,
-                    options: MapOptions(
-                      initialCenter: mapController.userLocation.value != null
-                          ? mapController.userLocation.value!
-                          : LatLng(0, 0),
-                      initialZoom: 13.0,
-                      onLongPress: (_, latLng) =>
-                          _showAddCircleDialog(context, mapController, latLng),
+              child: Stack(alignment: Alignment.center, children: [
+            Obx(() => FlutterMap(
+                  mapController: mapController.map,
+                  options: MapOptions(
+                    initialCenter: mapController.userLocation.value != null
+                        ? mapController.userLocation.value!
+                        : LatLng(0, 0),
+                    initialZoom: 13.0,
+                    // onLongPress: (_, latLng) =>
+                    //     _showAddCircleDialog(context, mapController, latLng),
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     ),
-                    children: [
-                      TileLayer(
-                        urlTemplate:
-                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      ),
-                      Obx(() => GestureDetector(
-                            onTap: () {
-                              mapController.deleteMarkOverlay();
-                            },
-                            child: CircleLayer(
-                              hitNotifier: mapController.hitNotifier,
-                              circles: mapController.circleAreas
-                                  .map(
-                                    (area) => CircleMarker(
-                                      hitValue: area,
-                                      point:
-                                          LatLng(area.latitude, area.longitude),
-                                      useRadiusInMeter: true,
-                                      radius: area.radius,
-                                      color: Colors.blue.withOpacity(0.5),
-                                      borderColor: Colors.blue,
-                                      borderStrokeWidth: 2,
-                                    ),
-                                  )
-                                  .toList(),
-                            ),
-                          )),
-                      Obx(() => MarkerLayer(
-                            markers: mapController.locationMark
-                                .map((point) => Marker(
-                                    width: 100,
-                                    height: 100,
-                                    point:
-                                        LatLng(point.latitude, point.longitude),
-                                    child: Column(
-                                      children: [
-                                        Icon(
-                                          Icons.location_pin,
-                                          color: (point.name == 'me')
-                                              ? Colors.blue
-                                              : Colors.red,
-                                          size: 40,
-                                        ),
-                                        Container(
-                                          padding: EdgeInsets.all(4),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius:
-                                                BorderRadius.circular(4),
-                                          ),
-                                          child: Text(
-                                            point.name ?? '',
-                                            style: TextStyle(fontSize: 12),
-                                            maxLines: 3,
-                                          ),
-                                        ),
-                                      ],
-                                    )))
+                    Obx(() => GestureDetector(
+                          onTap: () {
+                            mapController
+                                .deleteMarkOverlay(widget.rute.id.toString());
+                          },
+                          child: CircleLayer(
+                            hitNotifier: mapController.hitNotifier,
+                            circles: mapController.circleAreas
+                                .map(
+                                  (area) => CircleMarker(
+                                    hitValue: area,
+                                    point: LatLng(area!.lat!, area.lon!),
+                                    useRadiusInMeter: true,
+                                    radius: area.rad!,
+                                    color: Colors.blue.withOpacity(0.5),
+                                    borderColor: Colors.blue,
+                                    borderStrokeWidth: 2,
+                                  ),
+                                )
                                 .toList(),
-                          )),
-                    ],
-                  )))
+                          ),
+                        )),
+                    Obx(() => MarkerLayer(
+                          markers: mapController.locationMark
+                              .map((point) => Marker(
+                                  width: 100,
+                                  height: 100,
+                                  point: LatLng(point!.lat!, point.lon!),
+                                  child: Column(
+                                    children: [
+                                      Icon(
+                                        Icons.location_pin,
+                                        color: (point.name == 'me')
+                                            ? Colors.blue
+                                            : Colors.red,
+                                        size: 40,
+                                      ),
+                                      Container(
+                                        padding: EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          point.name ?? '',
+                                          style: TextStyle(fontSize: 12),
+                                          maxLines: 3,
+                                        ),
+                                      ),
+                                    ],
+                                  )))
+                              .toList(),
+                        )),
+                  ],
+                )),
+            Positioned(
+              right: 8,
+              bottom: 5,
+              child: IconButton(
+                  onPressed: () {
+                    mapController.goToUserLocation();
+                  },
+                  icon: Icon(Icons.location_on)),
+            ),
+          ])),
+          Obx(() {
+            if (mapController.isSearchLoc.isTrue) {
+              return Container(
+                height: 170,
+                padding: EdgeInsets.all(10),
+                child: Column(
+                  children: [
+                    Row(children: [
+                      Text("radius :"),
+                      Expanded(
+                        child: Slider(
+                          value: mapController.radius.value,
+                          min: 500,
+                          max: 10000,
+                          divisions: (10000 - 500) ~/ 100,
+                          label:
+                              "${(mapController.radius.value / 1000).toPrecision(2)} km",
+                          onChanged: (value) {
+                            mapController.radius.value = value;
+                          },
+                        ),
+                      ),
+                      Text(
+                          "${(mapController.radius.value / 1000).toPrecision(2)} km"),
+                    ]),
+                    Row(
+                      children: [
+                        Text("nada: ${mapController.alarmPathName}"),
+                        TextButton(
+                          onPressed: () {
+                            mapController.addAlarmAudio();
+                          },
+                          child: Text((mapController.alarmPathName != '')
+                              ? ''
+                              : 'Select Alarm File '),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Spacer(),
+                        TextButton(
+                          onPressed: () {
+                            mapController.cancelSearchLocation();
+                          },
+                          child: Text("Cancel"),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            final location = mapController.searchLoc!;
+
+                            mapController.addCircleArea(
+                              location.name!,
+                              location.lat!,
+                              location.lon!,
+                              mapController.radius.value,
+                              widget.rute.id.toString(),
+                            );
+                          },
+                          child: Text("add location"),
+                        ),
+                      ],
+                    )
+                  ],
+                ),
+              );
+            } else {
+              return SizedBox();
+            }
+          }),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          mapController.goToUserLocation();
-        },
-        child: Icon(Icons.location_on),
-      ),
-    );
-  }
-
-  void _showAddCircleDialog(
-    BuildContext context,
-    MyMapController mapController,
-    LatLng latLng,
-  ) {
-    final nameController = TextEditingController();
-    final radiusController = TextEditingController();
-    double radius = 500;
-    var selectedFilePath = ''.obs;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Add Circle Area'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: InputDecoration(labelText: 'Name'),
-            ),
-            TextField(
-              controller: radiusController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(labelText: 'radius (m)'),
-              onChanged: (value) {
-                radius = double.parse(value);
-              },
-            ),
-            TextButton(
-              onPressed: () async {
-                final result =
-                    await FilePicker.platform.pickFiles(type: FileType.audio);
-                if (result != null && result.files.isNotEmpty) {
-                  selectedFilePath.value = result.files.single.path!;
-                }
-              },
-              child: Obx(
-                  () => Text('Select Alarm File ' + selectedFilePath.value)),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              if (nameController.text.isNotEmpty &&
-                  radiusController.text.isNotEmpty) {
-                mapController.addCircleArea(
-                  nameController.text,
-                  latLng.latitude,
-                  latLng.longitude,
-                  radius,
-                  (selectedFilePath.value == '') ? selectedFilePath.value : 'default',
-                );
-                Navigator.of(context).pop();
-              } else {
-                Get.snackbar(
-                    'Error', 'Please fill all fields and select a file');
-              }
-            },
-            child: Text('Add'),
-          ),
-        ],
-      ),
+      // floatingActionButton: FloatingActionButton(
+      //   onPressed: () {
+      //     mapController.goToUserLocation();
+      //   },
+      //   child: Icon(Icons.location_on),
+      // ),
     );
   }
 }

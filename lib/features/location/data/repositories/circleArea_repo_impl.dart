@@ -11,26 +11,26 @@ class CircleAreaRepositoryImpl implements CircleAreaRepository {
   CircleAreaRepositoryImpl(this.datasource);
 
   @override
-  Future<void> addCircleArea(List<CircleArea> area) async {
+  Future<void> addCircleArea(List<CircleAreaModel?> area) async {
     //delete all data
-    datasource.deleteAllCircleArea();
+    // datasource.deleteAllCircleArea();
 
     //convert to model
-    final areaModel = area.map((e) => CircleAreaModel.fromEntity(e)).toList();
+    // final areaModel = area.map((e) => CircleAreaModel.fromJson(e)).toList();
 
     //save data
-    await datasource.addCircleArea(areaModel);
+    // await datasource.addCircleArea(area);
   }
 
   @override
-  Future<List<CircleArea>> getCircleAreas() async {
-    final data = await datasource.getCircleAreas();
-    return data.map((e) => e!.toEntity()).toList();
+  Future<List<CircleAreaModel?>> getCircleAreas() async {
+    // final data = await datasource.getCircleAreas();
+    // return data;
+    return [];
   }
 
   @override
-  Future<void> deleteCircleArea(CircleArea name) async {
-    final model = CircleAreaModel.fromEntity(name);
-    await datasource.deleteCircleArea(model);
+  Future<void> deleteCircleArea(CircleAreaModel name) async {
+    // await datasource.deleteCircleArea(name);
   }
 }

@@ -11,7 +11,9 @@ class SearchLocationRepositoryImpl implements SearchLocationRepository {
     // TODO: implement searchLocationByName
    final url =
         'https://nominatim.openstreetmap.org/search?q=$name&format=json&addressdetails=1&limit=5';
-    final response = await http.get(Uri.parse(url));
+    final response = await http.get(Uri.parse(url),headers: {
+      'User-Agent': 'com.example.alrm_gps/1.0 (rizkysiap86@gmail.com)'
+    });
 
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
@@ -23,7 +25,8 @@ class SearchLocationRepositoryImpl implements SearchLocationRepository {
         );
       }).toList();
     } else {
-      throw Exception('Failed to search location');
+      print('error search: ${response.statusCode} | ${response.body}');
+      throw Exception('${response.statusCode}');
     }
   }
   

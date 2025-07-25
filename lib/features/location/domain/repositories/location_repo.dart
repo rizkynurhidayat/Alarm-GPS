@@ -1,9 +1,10 @@
 // lib/domain/repositories/location_repository.dart
+import '../../data/models/location_model.dart';
 import '../entities/location.dart';
 
 abstract class LocationRepository {
-  Future<void> saveLocation(List<Location> location);
-  Future<List<Location>> getSavedLocations();
-  Future<Location> getCurrentLocation();
-  Future<void> deleteLocation(Location loc);
+  Future<void> saveMarkLocation(List<LocationModel?> location);
+  Future<List<LocationModel?>> getSavedLocations();
+  Future<LocationModel> getCurrentLocation();
+  Future<void> deleteLocation(LocationModel loc);
 }

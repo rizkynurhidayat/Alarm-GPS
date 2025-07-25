@@ -1,58 +1,27 @@
-import 'package:hive/hive.dart';
+class CircleAreaModel {
+  String? name;
+  double? lat;
+  double? lon;
+  double? rad;
+  String? alrmPath;
 
-import '../../domain/entities/circleArea.dart';
+  CircleAreaModel({this.name, this.lat, this.lon, this.rad, this.alrmPath});
 
+  CircleAreaModel.fromJson(Map<String, dynamic> json) {
+    name = json['name'];
+    lat = json['lat'];
+    lon = json['lon'];
+    rad = json['rad'];
+    alrmPath = json['alrm_path'];
+  }
 
-part 'circle_area_model.g.dart';
-
-@HiveType(typeId: 2)
-class CircleAreaModel extends CircleArea {
-  @HiveField(0)
-  final String name;
-
-  @HiveField(1)
-  final double latitude;
-
-  @HiveField(2)
-  final double longitude;
-
-  @HiveField(3)
-  final double radius;
-
-  @HiveField(4)
-  final String alarmFilePath;
-
-  CircleAreaModel({
-    required this.name,
-    required this.latitude,
-    required this.longitude,
-    required this.radius,
-    required this.alarmFilePath,
-  }) : super(
-          name: name,
-          latitude: latitude,
-          longitude: longitude,
-          radius: radius,
-          alarmFilePath: alarmFilePath,
-        );
-
-  /// Converts a [CircleAreaModel] to a [CircleArea].
-  CircleArea toEntity() => CircleArea(
-        name: name,
-        latitude: latitude,
-        longitude: longitude,
-        radius: radius,
-        alarmFilePath: alarmFilePath,
-      );
-
-  /// Creates a [CircleAreaModel] from a [CircleArea].
-  factory CircleAreaModel.fromEntity(CircleArea area) {
-    return CircleAreaModel(
-      name: area.name,
-      latitude: area.latitude,
-      longitude: area.longitude,
-      radius: area.radius,
-      alarmFilePath: area.alarmFilePath,
-    );
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = new Map<String, dynamic>();
+    data['name'] = this.name;
+    data['lat'] = this.lat;
+    data['lon'] = this.lon;
+    data['rad'] = this.rad;
+    data['alrm_path'] = this.alrmPath;
+    return data;
   }
 }

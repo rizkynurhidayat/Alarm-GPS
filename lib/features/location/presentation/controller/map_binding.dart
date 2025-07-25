@@ -37,7 +37,7 @@ class MapBinding extends Bindings {
         SearchLocationUseCase(searchLocationRepository);
 
     // Controller
-    Get.put(MyMapController(
+    Get.lazyPut(()=>MyMapController(
         manageLocationUseCase: getUserLocationUseCase,
         manageCircleAreasUseCase: manageCircleAreasUseCase,
         searchLocationUseCase: searchLocationUseCase));

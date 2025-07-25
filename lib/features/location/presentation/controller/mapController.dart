@@ -2,21 +2,29 @@
 
 import 'dart:math';
 
+import 'package:alrm_gps/features/location/data/datasources/circleArea_datasource.dart';
+import 'package:alrm_gps/features/location/data/datasources/location_datasource.dart';
+import 'package:alrm_gps/features/location/data/models/circle_area_model.dart';
+import 'package:alrm_gps/features/location/data/models/location_model.dart';
+import 'package:alrm_gps/features/location/data/models/rute_model.dart';
 import 'package:alrm_gps/features/location/domain/usecases/searchLocation.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../../../foregroundTask.dart';
 import '../../domain/entities/circleArea.dart';
 import '../../domain/entities/location.dart';
 import '../../domain/entities/searchLocation.dart';
 import '../../domain/usecases/manageLoaction.dart';
 import '../../domain/usecases/manageCircleArea.dart';
 
-class MyMapController extends GetxController {
+class MyMapController extends GetxController with WidgetsBindingObserver {
   final ManageLocationUseCase manageLocationUseCase;
   final ManageCircleAreasUseCase manageCircleAreasUseCase;
   final SearchLocationUseCase searchLocationUseCase;
@@ -27,10 +35,10 @@ class MyMapController extends GetxController {
     required this.searchLocationUseCase,
   });
 
-  var locationFromDb = Rxn<Location>();
+  // var locationFromDb = Rxn<LocationModel>();
   var userLocation = Rxn<LatLng>();
-  var circleAreas = <CircleArea>[].obs;
-  var locationMark = <Location>[].obs;
+  var circleAreas = <CircleAreaModel?>[].obs;
+  var locationMark = <LocationModel?>[].obs;
   var isInside = false.obs;
   var isLoading = false.obs;
   var isInit = true.obs;
@@ -45,10 +53,123 @@ class MyMapController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-
-    loadLocalData();
+    WidgetsBinding.instance.addObserver(this);
+    // init();
     fetchUserLocation();
+    // loadLocalData();
+    getAllRute();
   }
+
+  @override
+  void onClose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.onClose();
+  }
+
+  RxBool isInBackground = false.obs;
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      // App masuk background
+      isInBackground.value = true;
+      print('Sayang, app-nya lagi ngilang ke background 💔');
+    } else if (state == AppLifecycleState.resumed) {
+      // App kembali ke foreground
+      isInBackground.value = false;
+      final service = FlutterBackgroundService();
+      service.invoke("stopService");
+      print('Yay! App-nya balik lagi ke depan mata 💘');
+    }
+  }
+
+  void init() async {
+    if (serviceEnabled.isTrue) {
+      //  await initializeService();
+    } else {
+      reqPermission();
+      if (serviceEnabled.isTrue) {
+        // await initializeService();
+      }
+    }
+  }
+
+  var serviceEnabled = false.obs;
+  void reqPermission() async {
+    LocationPermission permission;
+    serviceEnabled.value = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled.isTrue) {
+      Get.snackbar('Permission Denied', 'Tolong nyalain lokasinya dong!');
+      await Future.delayed(Duration(seconds: 3));
+      await Geolocator.openLocationSettings();
+      // update();
+    }
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        Get.snackbar(
+            'izin ditolak', 'yaah sayang banget kamu blm aktifin lokasi');
+      }
+    }
+    if (permission == LocationPermission.whileInUse) {
+      final LocationPermission backgroundPermission =
+          await Geolocator.requestPermission();
+      if (backgroundPermission != LocationPermission.always) {
+        //
+        Get.snackbar('Aktifin izin lokasinya dong !!',
+            'aplikasi ini butuh izin lokasi untuk melanjutkan');
+      }
+    }
+  }
+
+  final datasource = LocationLocalDataSourceImpl();
+
+  void tambahRute(
+    String nama,
+    String deksripsi,
+  ) async {
+    // getAllRute();
+    final rute = RuteModel(
+        deskripsi: deksripsi,
+        name: nama,
+        id: (rutes.isNotEmpty) ? rutes.length + 1 : 1,
+        isActive: false,
+        timestamp: DateTime.now().toString());
+
+    rutes.add(rute);
+    final json = <Map<String, dynamic>>[];
+    // List<RuteModel> data = await datasource.getAllRuteKA();
+
+    rutes.forEach((e) {
+      json.add(e.toJson());
+    });
+    print("data new: $json");
+    datasource.saveRuteKA(json);
+    print('save data rute $json');
+    // final index = rutes.where((a) => a.id == rute.id);
+    // if (index == -1) {
+    // } else {
+    //   // await datasource.editRuteKA(rute);
+    // }
+  }
+
+  void editDute(RuteModel rute) async {
+    await datasource.editRuteKA(rute);
+  }
+
+  void deleteRute(int id) async {
+    await datasource.deleteRuteKA(id);
+  }
+
+  var rutes = <RuteModel>[].obs;
+
+  getAllRute() async {
+    // await initializeService();
+    rutes.value = await datasource.getAllRuteKA();
+  }
+
+  final locationDatasource = LocationLocalDataSourceImpl();
+  final circleAreaDatasource = CircleAreaLocalDataSourceImpl();
 
   Future<void> fetchUserLocation() async {
     try {
@@ -59,7 +180,7 @@ class MyMapController extends GetxController {
         Get.snackbar('Permission Denied', 'Tolong nyalain lokasinya dong!');
         await Future.delayed(Duration(seconds: 3));
         final a = await Geolocator.openLocationSettings();
-        update();
+        // update();
       }
       permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
@@ -71,30 +192,32 @@ class MyMapController extends GetxController {
       }
       while (serviceEnabled) {
         isLoading.value = true;
+        if (circleAreas.length != 0 && locationMark.length != 0) {}
         final location = await manageLocationUseCase.getCurrentLocation();
-        userLocation.value = LatLng(location.latitude, location.longitude);
-        if (locationMark.length != 0) {
-          final homeMark = locationMark.indexWhere((e) => e.name == 'me');
-          if (homeMark == -1) {
-            locationMark.add(location);
-          } else {
-            locationMark[homeMark] = location;
-            if (isInit.isTrue) {
-              goToUserLocation();
-            }
-          }
-        } else {
-          locationMark.add(location);
-          if (isInit.isTrue) {
-            goToUserLocation();
-          }
-        }
-        // await manageLocationUseCase.saveLocation(locationMark);
-        geofacing();
-        isLoading.toggle();
-        isInit.value = false;
+        locationDatasource.saveMyLocation(location);
+        // userLocation.value = LatLng(location.lat!, location.lon!);
+        // if (locationMark.isNotEmpty) {
+        //   final homeMark = locationMark.indexWhere((e) => e!.name! == 'me');
+        //   if (homeMark == -1) {
+        //     locationMark.add(location);
+        //   } else {
+        //     locationMark[homeMark] = location;
+        //     if (isInit.isTrue) {
+        //       goToUserLocation();
+        //     }
+        //   }
+        // } else {
+        //   locationMark.add(location);
+        //   if (isInit.isTrue) {
+        //     goToUserLocation();
+        //   }
+        // }
+        // // await manageLocationUseCase.saveLocation(locationMark);
+        // geofacing();
+        // isLoading.toggle();
+        // isInit.value = false;
 
-        saveData();
+        // saveData();
         await Future.delayed(Duration(minutes: 1));
       }
     } catch (e) {
@@ -102,60 +225,101 @@ class MyMapController extends GetxController {
     }
   }
 
-  void loadLocalData() async {
-    try {
-      final areas = await manageCircleAreasUseCase.getCircleAreas();
-      circleAreas.value = areas;
+  // LocationModel? myLocation;
+  RxBool isLocationupdate = false.obs;
+  void updateMap(String id) async {
 
-      final locations = await manageLocationUseCase.getSavedLocation();
-      locationMark.value = locations;
-      print('load data');
-    } catch (e) {
-      debugPrint('Error loading local data areas: $e');
+    isLocationupdate.value = true;
+    while (isLocationupdate.value) {
+      final markLocation = await locationDatasource.getSavedLocation(id);
+      final circleAreaData = await circleAreaDatasource.getCircleAreas(id);
+      locationMark.value = markLocation;
+      circleAreas.value = circleAreaData;
+      final myLocation = await locationDatasource.getMyLocation();
+      userLocation.value = LatLng(myLocation.lat!, myLocation.lon!);
+      // locationMark.add(myLocation);
+      final homeMark = locationMark.indexWhere((e) => e!.name! == 'me');
+      if (homeMark == -1) {
+        locationMark.add(myLocation);
+        goToUserLocation();
+      } else {
+        locationMark[homeMark] = myLocation;
+        if (isInit.isTrue) {
+          // goToUserLocation();
+          // map.move(userLocation.value!, 15);
+        }
+      }
+
+      print('add all mark count: ${markLocation.length}');
+      await Future.delayed(Duration(seconds: 30));
     }
   }
 
-  Future<void> addCircleArea(String name, double latitude, double longitude,
-      double radius, String alarmFilePath) async {
+  // void loadLocalData() async {
+    // try {
+    //   final areas = await manageCircleAreasUseCase.getCircleAreas();
+    //   circleAreas.value = areas;
+
+    //   final locations = await manageLocationUseCase.getSavedLocation();
+    //   locationMark.value = locations;
+    //   print('load data');
+    // } catch (e) {
+    //   debugPrint('Error loading local data areas: $e');
+    // }
+  // }
+
+  Future<void> addCircleArea(
+    String name,
+    double latitude,
+    double longitude,
+    double radius,
+    String id,
+  ) async {
     try {
-      final newArea = CircleArea(
+      final newArea = CircleAreaModel(
         name: name,
-        latitude: latitude,
-        longitude: longitude,
-        radius: radius,
-        alarmFilePath: alarmFilePath,
+        lat: latitude,
+        lon: longitude,
+        rad: radius,
+        alrmPath: (alarmPath.isNotEmpty) ? alarmPath.value : "default",
       );
-      final locationArea = Location(
-          latitude: latitude,
-          longitude: longitude,
-          timestamp: DateTime.now(),
+      final locationArea = LocationModel(
+          lat: latitude,
+          lon: longitude,
+          timestamp: DateTime.now().toIso8601String(),
           name: name);
-      final hasCircle = circleAreas.indexWhere((e) => e.name == newArea.name);
+      final hasCircle = circleAreas.indexWhere((e) => e!.name! == newArea.name);
       if (hasCircle == -1) {
         circleAreas.add(newArea);
       } else {
         circleAreas[hasCircle] = newArea;
       }
       final hasLoc =
-          locationMark.indexWhere((e) => e.name == locationArea.name);
+          locationMark.indexWhere((e) => e!.name == locationArea.name);
       if (hasLoc == -1) {
         locationMark.add(locationArea);
       } else {
         locationMark[hasLoc] = locationArea;
       }
+      circleAreaDatasource.addCircleArea(circleAreas, id);
+      locationDatasource.saveMarkLocation(locationMark, id);
+      searchLoc = null;
+      isSearchLoc.value = false;
+      alarmPath.value = '';
+      alarmPathName.value = '';
     } catch (e) {
       debugPrint('Error adding circle area: $e');
     }
   }
 
-  bool isUserInCircle(Location userLocation, CircleArea circleArea) {
+  bool isUserInCircle(LocationModel userLocation, CircleAreaModel circleArea) {
     final distance = calculateDistance(
-      userLocation.latitude,
-      userLocation.longitude,
-      circleArea.latitude,
-      circleArea.longitude,
+      userLocation.lat!,
+      userLocation.lon!,
+      circleArea.lat!,
+      circleArea.lon!,
     );
-    return distance <= circleArea.radius;
+    return distance <= circleArea.rad!;
   }
 
   double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
@@ -176,11 +340,12 @@ class MyMapController extends GetxController {
     return degrees * (3.14159265359 / 180);
   }
 
-  void saveData() async {
+  void saveData(String id) async {
     print('loc length : ${locationMark.length}');
     print('circle length : ${circleAreas.length}');
-    await manageLocationUseCase.saveLocation(locationMark);
-    await manageCircleAreasUseCase.addCircleArea(circleAreas);
+    // await manageLocationUseCase.saveLocation(locationMark);
+    // await manageCircleAreasUseCase.addCircleArea(circleAreas);
+    locationDatasource.saveMarkLocation(locationMark, id);
   }
 
   Future<void> searchLocation(String query) async {
@@ -188,14 +353,54 @@ class MyMapController extends GetxController {
       final results = await searchLocationUseCase(query);
       searchResults.assignAll(results);
     } catch (e) {
-      Get.snackbar('Error', 'Failed to search location');
+      Get.snackbar('Error', 'Failed to search location $e');
     }
   }
 
+  RxDouble radius = 4000.0.obs;
+  RxBool isSearchLoc = false.obs;
+  LocationModel? searchLoc;
+  RxString alarmPath = ''.obs;
+  RxString alarmPathName = ''.obs;
   void goToSearchLocation(SearchLocation loc) {
     map.move(LatLng(loc.latitude, loc.longitude), 15);
+    isSearchLoc.value = true;
+    searchLoc = LocationModel(
+        name: loc.name,
+        lat: loc.latitude,
+        lon: loc.longitude,
+        timestamp: DateTime.now().toString());
+
+    final hasLoc = locationMark.indexWhere((e) => e!.name == searchLoc!.name);
+    if (hasLoc == -1) {
+      locationMark.add(searchLoc);
+    } else {
+      locationMark[hasLoc] = searchLoc;
+    }
+
     searchResults.clear();
     searchController.clear();
+  }
+
+  void cancelSearchLocation() {
+    final hasLoc = locationMark.indexWhere((e) => e!.name == searchLoc!.name);
+    if (hasLoc == -1) {
+      // locationMark.add(searchLoc);
+      print('serachloc no data');
+    } else {
+      locationMark.removeAt(hasLoc);
+      isSearchLoc.value = false;
+      radius.value = 4000.0;
+      alarmPathName.value = '';
+    }
+  }
+
+  void addAlarmAudio() async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.audio);
+    if (result != null && result.files.isNotEmpty) {
+      alarmPath.value = result.files.single.path!;
+      alarmPathName.value = result.files.single.name;
+    }
   }
 
   void goToUserLocation() {
@@ -205,13 +410,13 @@ class MyMapController extends GetxController {
   void geofacing() async {
     if (userLocation.value == null) return;
 
-    CircleArea? closestArea;
+    CircleAreaModel? closestArea;
     double? closestDistance;
 
     for (final area in circleAreas) {
       double distance = Geolocator.distanceBetween(
-        area.latitude,
-        area.longitude,
+        area!.lat!,
+        area.lon!,
         userLocation.value!.latitude,
         userLocation.value!.longitude,
       );
@@ -228,11 +433,12 @@ class MyMapController extends GetxController {
     }
     if (closestArea != null && closestDistance != null) {
       bool wasInside = isInside.value;
-      isInside.value = closestDistance <= closestArea.radius;
+      isInside.value = closestDistance <= closestArea.rad!;
 
       if (!wasInside && isInside.value) {
         Get.snackbar("Geofence", "Kamu memasuki area ${closestArea.name}");
-        playAudio(closestArea.alarmFilePath);
+        playAudio(closestArea.alrmPath!);
+        print(closestArea.alrmPath);
         geofanText.value = "Kamu memasuki area ${closestArea.name}";
       } else if (wasInside && !isInside.value) {
         Get.snackbar("Geofence", "Kamu keluar dari area ${closestArea.name}");
@@ -241,20 +447,20 @@ class MyMapController extends GetxController {
     }
   }
 
-  void deleteCircleArea(CircleArea name) async {
+  void deleteCircleArea(CircleAreaModel name) async {
     try {
       await manageCircleAreasUseCase.deleteCircleArea(name);
-      circleAreas.removeWhere((area) => area.name == name.name);
-      locationMark.removeWhere((area) => area.name == name.name);
+      circleAreas.removeWhere((area) => area!.name == name.name);
+      locationMark.removeWhere((area) => area!.name == name.name);
     } catch (e) {
       debugPrint('Error deleting circle area: $e');
     }
   }
 
-  void deleteMarkOverlay() {
+  void deleteMarkOverlay(String id) {
     final LayerHitResult? hitResult = hitNotifier.value;
     if (hitResult == null) return;
-    final area = hitResult.hitValues.first as CircleArea;
+    final area = hitResult.hitValues.first as CircleAreaModel;
 
     Get.dialog(
       AlertDialog(
@@ -268,9 +474,16 @@ class MyMapController extends GetxController {
             child: Text('Batal'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               // Aksi delete di sini
-              deleteCircleArea(area);
+              // deleteCircleArea(area);
+              circleAreas.removeWhere(
+                  (e) => e!.lat! == area.lat && e.lon! == area.lon);
+              locationMark.removeWhere(
+                  (e) => e!.lat! == area.lat && e.lon! == area.lon);
+              print('remove circle area');
+              await circleAreaDatasource.addCircleArea(circleAreas, id);
+              await locationDatasource.saveMarkLocation(locationMark, id);
               Get.back(); // Tutup dialog setelah aksi
               Get.snackbar('Hapus', 'Item berhasil dihapus!',
                   snackPosition: SnackPosition.BOTTOM);

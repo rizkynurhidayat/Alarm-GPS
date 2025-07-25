@@ -17,7 +17,7 @@ class LocationRepositoryImpl implements LocationRepository {
     distanceFilter: 100,
   );
   @override
-  Future<Location> getCurrentLocation() async {
+  Future<LocationModel> getCurrentLocation() async {
     try {
       print("start get possition");
 
@@ -27,10 +27,10 @@ class LocationRepositoryImpl implements LocationRepository {
           forceAndroidLocationManager: true);
 
       print("get possition");
-      return Location(
-          latitude: position.latitude,
-          longitude: position.longitude,
-          timestamp: position.timestamp,
+      return LocationModel(
+          lat: position.latitude,
+          lon: position.longitude,
+          timestamp: position.timestamp.toString(),
           name: 'me');
     } catch (e) {
       print("Error get location: $e");
@@ -39,29 +39,29 @@ class LocationRepositoryImpl implements LocationRepository {
   }
 
   @override
-  Future<void> saveLocation(List<Location> location) async {
-    //clear all data
-    await datasource.deleteAllData();
+  Future<void> saveMarkLocation(List<LocationModel?> location) async {
+    // //clear all data
+    // await datasource.deleteAllData();
 
-    //convert to model
-    final locationModel =
-        location.map((e) => LocationModel.fromEntity(e)).toList();
-    print('saveLocation');
+    // //convert to model
+    // datasource.saveLocation
+    // print('saveLocation');
+
     //save all new data
-    await datasource.saveLocation(locationModel);
+    // await datasource.saveMarkLocation(location);
   }
 
   @override
-  Future<List<Location>> getSavedLocations() async {
-    final locationModel = await datasource.getLastSavedLocation();
-    final loc = locationModel.map((e) => e!.toEntity()).toList();
+  Future<List<LocationModel?>> getSavedLocations() async {
+    // final locationModel = await datasource.getSavedLocation();
+
     print('get saved location');
-    return loc;
+    // return locationModel;
+    return [];
   }
 
   @override
-  Future<void> deleteLocation(Location loc) async {
-    final model = LocationModel.fromEntity(loc);
-    await datasource.deleteData(model);
+  Future<void> deleteLocation(LocationModel loc) async {
+    await datasource.deleteData(loc);
   }
 }

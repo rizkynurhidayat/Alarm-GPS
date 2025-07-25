@@ -1,3 +1,4 @@
+import '../../data/models/circle_area_model.dart';
 import '../entities/circleArea.dart';
 
 import '../repositories/circle_area_repo.dart';
@@ -7,15 +8,15 @@ class ManageCircleAreasUseCase {
 
   ManageCircleAreasUseCase(this.repository);
 
-  Future<void> addCircleArea(List<CircleArea> area) async {
+  Future<void> addCircleArea(List<CircleAreaModel?> area) async {
     await repository.addCircleArea(area);
   }
 
-  Future<List<CircleArea>> getCircleAreas() async {
+  Future<List<CircleAreaModel?>> getCircleAreas() async {
     return await repository.getCircleAreas();
   }
 
-  Future<void> deleteCircleArea(CircleArea name) async {
+  Future<void> deleteCircleArea(CircleAreaModel name) async {
     await repository.deleteCircleArea(name);
   }
 }

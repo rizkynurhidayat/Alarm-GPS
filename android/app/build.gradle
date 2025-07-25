@@ -14,7 +14,7 @@ assert keystorePropertiesFile.exists()
 
 android {
     namespace = "com.example.alrm_gps"
-    compileSdk = 34
+    compileSdk = 35
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -67,10 +67,12 @@ dependencies {
     implementation("com.google.android.material:material:1.10.0")
     // For AGP 7.4+
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.3")
+ 
     // For AGP 7.3
     // coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:1.2.3")
     // For AGP 4.0 to 7.2
     // coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:1.1.9")
+    
 }
 
 flutter {
